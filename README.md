@@ -5,3 +5,116 @@ Code compatible with the NUCLEO-L476RG + SX1262 devkit (SX1262MB2CAS or SX1262DV
 
 A how-to guide is available in the [Flora wiki](https://gitlab.ethz.ch/tec/public/flora/wiki#clone-compile-run).
 
+## Prerequisites
+
+- **Toolchain**: GNU Arm Embedded Toolchain **9-2020-q2-update** (`arm-none-eabi-gcc`)
+  - Download: https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
+  - The Flora library checks for GCC 7 at compile time. Using GCC 9 (9-2020-q2-update) will produce a harmless warning:
+    ```
+    Lib/flora_lib.h:96:2: warning: #warning "Compiler version has changed." [-Wcpp]
+    ```
+    This warning can be safely ignored.
+
+## Build with Makefile (recommended)
+
+### Clone
+
+```bash
+git clone --recurse-submodules git@github.com:chien-chia-huang/lwb.git
+cd lwb
+```
+
+If you already cloned without `--recurse-submodules`:
+```bash
+git submodule update --init --recursive
+```
+
+### Build
+
+```bash
+make
+```
+
+Or specify the toolchain path explicitly:
+```bash
+make GCC_PATH=/path/to/gcc-arm-none-eabi-9-2020-q2-update/bin
+```
+
+The output files are in the `build/` directory:
+- `build/comboard_lwb.elf`
+- `build/comboard_lwb.hex`
+- `build/comboard_lwb.bin`
+
+### Flash
+
+Using JFlashLite, select **STM32L433CC** and flash the `.hex` file.
+
+## Build with Docker
+
+If you don't want to install the toolchain locally, you can build using Docker:
+
+```bash
+docker build --platform linux/amd64 -t lwb-build .
+docker cp $(docker create lwb-build):/lwb/build/comboard_lwb.hex .
+```
+
+This uses the exact 9-2020-q2-update toolchain for a reproducible build.
+
+## Build with STM32CubeIDE
+
+- To run (build and flash) the LWB example, use the toolchain **GNU Tools for STM32 (9-2020-q2-update)**.
+- To use SEGGER J-LINK in STM32CubeIDE, *libncurses5* must be installed:
+  ```bash
+  sudo apt install libncurses5
+  ```
+- Build the project in STM32CubeIDE.
+- Using JFlashLite, select **STM32L433CC** and flash the `.hex` file. You can also use SEGGER J-LINK directly in STM32CubeIDE.
+
+## Configure LWB example for two nodes
+
+- The flag `FLOCKLAB` in `app_config.h` must be deactivated for running with experimental boards (not Flocklab).
+- The **HOST** works as the **GATEWAY** of the communication.
+- The **HOST_ID** must always be equal to 2, which means that NODE_ID of the GATEWAY is 2.
+- Set **NODE_ID = 1** for the other node.
+
+### Configuration for gateway
+
+```c
+/* network parameters */
+#define HOST_ID                         2
+#if !FLOCKLAB
+#define NODE_ID                       HOST_ID
+#endif /* FLOCKLAB */
+#define IS_HOST                         (NODE_ID == host_id)
+```
+
+### Configuration for node
+
+```c
+/* network parameters */
+#define HOST_ID                         2
+#if !FLOCKLAB
+#define NODE_ID                       1
+#endif /* FLOCKLAB */
+#define IS_HOST                         (NODE_ID == host_id)
+```
+
+## Testing
+
+Use the serial console with the appropriate baud rate to check correct behaviour:
+- **NODE_ID=1** creates a package and sends it to the GATEWAY (NODE_ID = 2).
+- The gateway prints: `lwb: data received from node 1`.
+
+> The UART baud rate depends on the FLOCKLAB flag (see `main.c`):
+> - FLOCKLAB = 0 &rarr; 1000000
+> - FLOCKLAB = 1 &rarr; 460800
+
+## Running an experiment on FlockLab
+
+The `run_flocklab_test.sh` script configures the XML from `app_config.h`.
+
+## Documentation
+
+- DPP2 Dev Board:
+  - https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/338855/IPSN2019_DPP_Demo.pdf
+  - https://gitlab.ethz.ch/tec/public/dpp/dpp/-/wikis/Application/DevBoard

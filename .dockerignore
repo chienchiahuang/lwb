@@ -1,0 +1,8 @@
+build/
+Debug/
+.git/
+data/
+*.elf
+*.hex
+*.bin
+*.o
