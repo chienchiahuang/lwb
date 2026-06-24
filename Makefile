@@ -271,7 +271,8 @@ $(BUILD_DIR):
 #######################################
 clean:
 	-rm -fR $(BUILD_DIR)
-  
+	-rm -fR $(DOCKER_BUILD_DIR)
+
 #######################################
 # dependencies
 #######################################
@@ -280,6 +281,8 @@ clean:
 # *** EOF ***
 
 device = STM32L433CC
+DOCKER_BUILD_DIR = build_docker
+
 $(BUILD_DIR)/jflash: $(BUILD_DIR)/$(TARGET).bin
 	@touch $@
 	@echo device $(device) > $@
@@ -287,7 +290,35 @@ $(BUILD_DIR)/jflash: $(BUILD_DIR)/$(TARGET).bin
 	@echo loadbin $< 0x8000000 >> $@
 	@echo r'\n'g'\n'qc >> $@
 
-
-
 jflash: $(BUILD_DIR)/jflash
 	JLinkExe -commanderscript $<
+
+#######################################
+# Docker build
+#######################################
+.PHONY: docker docker-jflash docker-clean
+
+docker:
+	docker build --platform linux/amd64 -t lwb-build .
+	@mkdir -p $(DOCKER_BUILD_DIR)
+	@CID=$$(docker create --platform linux/amd64 lwb-build) && \
+		docker cp $$CID:/lwb/build/$(TARGET).elf $(DOCKER_BUILD_DIR)/ && \
+		docker cp $$CID:/lwb/build/$(TARGET).hex $(DOCKER_BUILD_DIR)/ && \
+		docker cp $$CID:/lwb/build/$(TARGET).bin $(DOCKER_BUILD_DIR)/ && \
+		docker rm $$CID > /dev/null && \
+		echo "Docker build artifacts in $(DOCKER_BUILD_DIR)/"
+
+$(DOCKER_BUILD_DIR)/jflash: $(DOCKER_BUILD_DIR)/$(TARGET).bin
+	@touch $@
+	@echo device $(device) > $@
+	@echo si 1'\n'speed 4000 >> $@
+	@echo loadbin $< 0x8000000 >> $@
+	@echo r'\n'g'\n'qc >> $@
+
+docker-jflash: $(DOCKER_BUILD_DIR)/jflash
+	JLinkExe -commanderscript $<
+
+docker-clean:
+	-rm -fR $(DOCKER_BUILD_DIR)
+	-docker rm $$(docker ps -a -q --filter ancestor=lwb-build) 2>/dev/null
+	-docker rmi lwb-build 2>/dev/null

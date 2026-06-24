@@ -15,9 +15,7 @@ A how-to guide is available in the [Flora wiki](https://gitlab.ethz.ch/tec/publi
     ```
     This warning can be safely ignored.
 
-## Build with Makefile (recommended)
-
-### Clone
+## Clone
 
 ```bash
 git clone --recurse-submodules git@github.com:chien-chia-huang/lwb.git
@@ -29,7 +27,9 @@ If you already cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-### Build
+## Build (local toolchain)
+
+Requires the ARM toolchain installed locally. Artifacts go to `build/`.
 
 ```bash
 make
@@ -40,25 +40,39 @@ Or specify the toolchain path explicitly:
 make GCC_PATH=/path/to/gcc-arm-none-eabi-9-2020-q2-update/bin
 ```
 
-The output files are in the `build/` directory:
+Output files:
 - `build/comboard_lwb.elf`
 - `build/comboard_lwb.hex`
 - `build/comboard_lwb.bin`
 
-### Flash
+## Build with Docker
+
+No local toolchain needed. Artifacts are copied to `build_docker/`.
+
+```bash
+make docker
+```
+
+Output files:
+- `build_docker/comboard_lwb.elf`
+- `build_docker/comboard_lwb.hex`
+- `build_docker/comboard_lwb.bin`
+
+This uses the exact 9-2020-q2-update toolchain for a reproducible build.
+
+## Flash
 
 Using JFlashLite, select **STM32L433CC** and flash the `.hex` file.
 
-## Build with Docker
-
-If you don't want to install the toolchain locally, you can build using Docker:
-
+Flash from a local build:
 ```bash
-docker build --platform linux/amd64 -t lwb-build .
-docker cp $(docker create lwb-build):/lwb/build/comboard_lwb.hex .
+make jflash
 ```
 
-This uses the exact 9-2020-q2-update toolchain for a reproducible build.
+Flash from a Docker build:
+```bash
+make docker-jflash
+```
 
 ## Build with STM32CubeIDE
 
@@ -72,7 +86,7 @@ This uses the exact 9-2020-q2-update toolchain for a reproducible build.
 
 ## Configure LWB example for two nodes
 
-- The flag `FLOCKLAB` in `app_config.h` must be deactivated for running with experimental boards (not Flocklab).
+- The flag `FLOCKLAB` in `app_config.h` must be deactivated for running with experimental boards (not FlockLab).
 - The **HOST** works as the **GATEWAY** of the communication.
 - The **HOST_ID** must always be equal to 2, which means that NODE_ID of the GATEWAY is 2.
 - Set **NODE_ID = 1** for the other node.

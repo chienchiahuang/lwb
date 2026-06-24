@@ -5,6 +5,7 @@
 # compiler artifacts
 /Debug/
 /build/
+/build_docker/
 *.elf
 *.exe
 *.bin
