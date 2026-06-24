@@ -8,6 +8,7 @@
 
 # compiler artifacts
 /Debug/
+/build/
 *.elf
 *.exe
 *.bin
